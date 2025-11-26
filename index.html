@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chemie Master: Erweiterte Profi Edition</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .tap-active:active { transform: scale(0.97); transition: transform 0.1s; }
+        .no-select { user-select: none; -webkit-user-select: none; }
+        
+        input[type="number"] { -moz-appearance: textfield; font-size: 1.1rem; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 28px; width: 28px; border-radius: 50%;
+            background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); margin-top: -10px; border: 1px solid #ddd;
+        }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; border-radius: 4px; }
+        
+        .balance-beam { transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .pulse { animation: pulse 0.5s ease-in-out; }
+        
+        .pse-element { 
+            transition: all 0.2s; 
+            cursor: pointer;
+        }
+        .pse-element:hover { transform: scale(1.1); z-index: 10; }
+        .pse-element.selected { ring: 2px solid #3b82f6; transform: scale(1.1); }
+        
+        .hint-step { 
+            border-left: 3px solid #fbbf24; 
+            padding-left: 12px; 
+            margin: 8px 0;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.3s ease-out;
+        }
+        .hint-step.visible { opacity: 1; transform: translateX(0); }
+        
+        .progress-ring { transition: stroke-dashoffset 0.5s ease-out; }
+        
+        .molecule-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="pb-32 text-slate-800 bg-slate-100">
+
+    <!-- Header mit Fortschrittsanzeige -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto p-3">
+            <div class="flex items-center justify-between mb-3">
+                <h1 class="text-lg font-black text-slate-800">⚗️ CHEMIE MASTER</h1>
+                <div class="flex items-center gap-2">
+                    <div class="text-xs text-slate-500">Gesamt-XP:</div>
+                    <div class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold" id="total-xp">0</div>
+                </div>
+            </div>
+            
+            <!-- Tab Navigation -->
+            <div class="bg-slate-200 p-1 rounded-xl flex font-bold text-xs gap-1 overflow-x-auto">
+                <button onclick="switchTab('lvl1')" id="btn-lvl1" class="flex-1 py-2 px-2 rounded-lg bg-white shadow-sm text-blue-600 transition-all tap-active whitespace-nowrap">🎯 Basics</button>
+                <button onclick="switchTab('lvl2')" id="btn-lvl2" class="flex-1 py-2 px-2 rounded-lg text-slate-500 transition-all tap-active whitespace-nowrap">⚖️ Waage</button>
+                <button onclick="switchTab('lvl3')" id="btn-lvl3" class="flex-1 py-2 px-2 rounded-lg text-slate-500 transition-all tap-active whitespace-nowrap">🧪 Stöchio</button>
+                <button onclick="switchTab('pse')" id="btn-pse" class="flex-1 py-2 px-2 rounded-lg text-slate-500 transition-all tap-active whitespace-nowrap">📊 PSE</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-3 mt-4">
+
+        <!-- ==================== LEVEL 1: BASICS ==================== -->
+        <div id="content-lvl1" class="tab-content active space-y-6">
+            
+            <!-- Matching Game mit Reset -->
+            <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-blue-500">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2"><span>🧩</span> Zuordnung</h2>
+                    <button onclick="resetMatching()" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg tap-active">🔄 Neu</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2" id="match-grid"></div>
+            </section>
+
+            <!-- Goldwaage mit mehr Stoffen -->
+            <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-green-500">
+                <h2 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><span>⚖️</span> Schnellwaage</h2>
+                <div class="flex gap-2 mb-3 overflow-x-auto pb-2">
+                    <button onclick="setQuickScale('Au', 197)" class="quick-scale-btn bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">Au (197)</button>
+                    <button onclick="setQuickScale('Fe', 56)" class="quick-scale-btn bg-slate-100 text-slate-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">Fe (56)</button>
+                    <button onclick="setQuickScale('Cu', 63.5)" class="quick-scale-btn bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">Cu (63.5)</button>
+                    <button onclick="setQuickScale('NaCl', 58.5)" class="quick-scale-btn bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">NaCl (58.5)</button>
+                    <button onclick="setQuickScale('H₂SO₄', 98)" class="quick-scale-btn bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">H₂SO₄ (98)</button>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="text-center text-sm text-slate-500 mb-2">Aktuell: <span id="l1-current-sub" class="font-bold text-slate-700">Au</span> (M = <span id="l1-current-M">197</span> g/mol)</div>
+                    <input type="range" id="l1-slider" min="0" max="5" step="0.1" value="1" class="w-full mb-4 accent-green-600 bg-gray-200">
+                    <div class="flex justify-between items-center text-center">
+                        <div class="w-1/2"><div class="text-2xl font-bold text-slate-700" id="l1-disp-n">1.0</div><div class="text-xs text-gray-400 uppercase">Mol (n)</div></div>
+                        <div class="text-xl text-gray-300">➜</div>
+                        <div class="w-1/2"><div class="text-2xl font-bold text-green-600" id="l1-disp-m">197.0</div><div class="text-xs text-gray-400 uppercase">Gramm (g)</div></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Formel-Training MIT HILFESYSTEM -->
+            <section class="bg-slate-800 text-white rounded-2xl shadow-lg p-5 border-t-4 border-yellow-400 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-500 opacity-10 blur-2xl rounded-full -mr-10 -mt-10"></div>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold flex items-center gap-2 relative z-10"><span>🧮</span> Formel-Training</h2>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs bg-white/10 px-2 py-1 rounded" id="l1-streak">🔥 0</span>
+                        <button onclick="toggleHint()" id="hint-btn" class="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 px-3 py-1 rounded-lg tap-active">💡 Hilfe</button>
+                    </div>
+                </div>
+                
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 relative z-10">
+                    <div id="l1-calc-text" class="text-base mb-3 font-medium min-h-[2.5rem]">Lade Aufgabe...</div>
+                    
+                    <!-- Hilfesystem -->
+                    <div id="hint-container" class="hidden bg-black/30 rounded-lg p-3 mb-3">
+                        <div class="text-xs text-yellow-400 font-bold mb-2">📚 Schritt für Schritt:</div>
+                        <div id="hint-step-1" class="hint-step text-sm text-slate-300"></div>
+                        <div id="hint-step-2" class="hint-step text-sm text-slate-300"></div>
+                        <div id="hint-step-3" class="hint-step text-sm text-slate-300"></div>
+                        <button onclick="revealNextHint()" id="reveal-hint-btn" class="mt-2 text-xs bg-yellow-500/30 text-yellow-300 px-3 py-1 rounded tap-active">Nächsten Schritt zeigen</button>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <div class="relative flex-grow">
+                            <input type="number" id="l1-user-answ" inputmode="decimal" placeholder="?" class="w-full h-11 bg-slate-900 border border-slate-600 rounded-lg px-3 text-white text-lg font-mono focus:border-yellow-400 outline-none">
+                            <span class="absolute right-3 top-3 text-gray-500 text-sm" id="l1-unit">Einh.</span>
+                        </div>
+                        <button onclick="checkCalcL1()" class="bg-yellow-500 text-yellow-900 font-bold px-4 rounded-lg tap-active shadow-lg">OK</button>
+                    </div>
+                    <div id="l1-calc-feedback" class="mt-3 hidden p-3 rounded-lg text-sm bg-black/20"></div>
+                    <button onclick="nextCalcL1()" id="l1-btn-next" class="w-full mt-3 bg-slate-600 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
+                </div>
+            </section>
+
+            <!-- Konzentration-Modul (NEU) -->
+            <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-purple-500">
+                <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><span>🧪</span> Konzentration (c = n/V)</h2>
+                <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                    <div id="conc-task" class="text-sm mb-4 text-slate-700">Lade Aufgabe...</div>
+                    <div class="flex gap-2">
+                        <input type="number" id="conc-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border border-purple-300 rounded-lg px-3 text-slate-800 font-mono focus:border-purple-500 outline-none">
+                        <span class="flex items-center text-sm text-slate-500" id="conc-unit">mol/L</span>
+                        <button onclick="checkConc()" class="bg-purple-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
+                    </div>
+                    <div id="conc-feedback" class="mt-2 hidden p-2 rounded-lg text-sm"></div>
+                    <button onclick="nextConc()" id="conc-next" class="w-full mt-2 bg-purple-200 text-purple-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== LEVEL 2: WAAGE ==================== -->
+        <div id="content-lvl2" class="tab-content space-y-6">
+
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-blue-600 p-3 border-b border-blue-700 text-white flex justify-between items-center">
+                    <h2 class="font-bold flex items-center gap-2"><span>⚖️</span> Waage: Expert Mode</h2>
+                    <span class="text-xs bg-blue-800 px-2 py-1 rounded font-mono" id="bal-score">Gelöst: 0</span>
+                </div>
+                <div class="p-5">
+                    <p class="text-sm text-slate-600 mb-4 text-center font-medium">Bringe die Waage ins Gleichgewicht.<br>Gegengewicht: <span class="text-blue-600 font-bold">Wasser (H₂O, M=18)</span></p>
+
+                    <div class="relative h-28 mb-6">
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-14 bg-slate-300 rounded-t-lg"></div>
+                        <div id="l2-beam" class="balance-beam absolute top-4 left-0 right-0 h-2 bg-slate-600 rounded mx-4 flex justify-between items-center">
+                            <div class="relative -ml-2 transform -translate-y-full flex flex-col items-center">
+                                <div class="w-12 h-12 bg-slate-200 rounded border-2 border-slate-300 flex items-center justify-center text-lg shadow">📦</div>
+                                <div class="h-5 w-0.5 bg-slate-400"></div>
+                                <div class="text-[9px] font-bold bg-slate-800 text-white px-2 py-1 rounded mt-1 shadow" id="l2-left-label">???</div>
+                            </div>
+                            <div class="relative -mr-2 transform -translate-y-full flex flex-col items-center">
+                                <div class="w-12 h-12 bg-blue-50 rounded border-2 border-blue-200 flex items-center justify-center text-lg shadow relative overflow-hidden">
+                                    <span class="z-10">💧</span>
+                                    <div id="l2-water-fill" class="absolute bottom-0 w-full bg-blue-400 opacity-50 transition-all duration-300" style="height:0%"></div>
+                                </div>
+                                <div class="h-5 w-0.5 bg-slate-400"></div>
+                                <div class="text-[9px] font-bold bg-blue-600 text-white px-2 py-1 rounded mt-1 shadow"><span id="l2-bal-disp">0</span> mol</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <input type="range" id="l2-slider" min="0" max="25" step="0.1" value="0" class="w-full mb-2 bg-gray-300 accent-blue-600">
+                        <div class="flex justify-between items-center mt-1">
+                             <div class="text-xs text-gray-400 font-mono">0 mol</div>
+                             <div class="font-bold text-blue-600 opacity-0 transition-opacity" id="l2-feedback">⚖️ Perfekt!</div>
+                             <div class="text-xs text-gray-400 font-mono">25 mol</div>
+                        </div>
+                    </div>
+                    <button onclick="nextBalanceTask()" id="btn-next-bal" class="w-full mt-3 bg-blue-600 text-white py-2.5 rounded-lg font-bold shadow hidden tap-active">Nächste Waage ➜</button>
+                </div>
+            </section>
+
+            <!-- CSI -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-slate-800 p-3 relative overflow-hidden flex justify-between items-center">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-400 rounded-full opacity-10 blur-xl -mr-6 -mt-6"></div>
+                    <h2 class="font-bold text-yellow-400 flex items-center gap-2 relative z-10"><span>🕵️‍♀️</span> CSI: No Help</h2>
+                    <span class="text-xs bg-white/10 text-yellow-400 px-2 py-1 rounded font-mono relative z-10" id="csi-score">Fälle: 0</span>
+                </div>
+                
+                <div class="p-4">
+                    <p class="text-sm text-slate-600 mb-3 font-medium text-center">Identifiziere den Stoff anhand der Messwerte.</p>
+                    
+                    <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-lg mb-4 rotate-1 font-mono text-sm text-yellow-900 shadow-sm relative">
+                        <div class="absolute -top-2 left-2 bg-white border border-yellow-200 px-1 text-[9px] font-bold text-slate-400 uppercase">BEWEISMITTEL</div>
+                        <div class="flex justify-between mt-1">
+                            <div><div class="text-[9px] opacity-60">MASSE</div><div class="text-lg font-bold" id="csi-m">---</div></div>
+                            <div><div class="text-[9px] opacity-60">STOFFMENGE</div><div class="text-lg font-bold" id="csi-n">---</div></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2" id="csi-grid"></div>
+                    <button onclick="nextCase()" class="w-full mt-3 bg-slate-800 text-white py-2.5 rounded-lg font-bold shadow hidden tap-active" id="csi-next-btn">Nächster Fall ➜</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== LEVEL 3: STÖCHIOMETRIE (NEU) ==================== -->
+        <div id="content-lvl3" class="tab-content space-y-6">
+            
+            <!-- Reaktionsgleichungen ausgleichen -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-emerald-600 to-teal-600 p-3 text-white flex justify-between items-center">
+                    <h2 class="font-bold flex items-center gap-2"><span>⚗️</span> Gleichungen ausgleichen</h2>
+                    <span class="text-xs bg-white/20 px-2 py-1 rounded font-mono" id="balance-eq-score">Gelöst: 0</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-slate-600 mb-4 text-center">Gib die Koeffizienten ein, um die Gleichung auszugleichen.</p>
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <div class="flex items-center justify-center gap-1 flex-wrap text-lg font-mono" id="equation-display">
+                            <!-- Dynamisch generiert -->
+                        </div>
+                    </div>
+                    
+                    <div id="eq-feedback" class="hidden p-3 rounded-lg text-sm mb-3"></div>
+                    <div class="flex gap-2">
+                        <button onclick="checkEquation()" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-lg font-bold tap-active">Prüfen</button>
+                        <button onclick="nextEquation()" id="eq-next-btn" class="flex-1 bg-slate-200 text-slate-600 py-2.5 rounded-lg font-bold tap-active hidden">Weiter ➜</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stöchiometrische Berechnungen -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-orange-500 to-red-500 p-3 text-white flex justify-between items-center">
+                    <h2 class="font-bold flex items-center gap-2"><span>🔬</span> Stoffmengen berechnen</h2>
+                    <span class="text-xs bg-white/20 px-2 py-1 rounded font-mono" id="stoich-score">Gelöst: 0</span>
+                </div>
+                <div class="p-4">
+                    <div class="bg-orange-50 border border-orange-200 p-3 rounded-lg mb-4">
+                        <div class="text-xs text-orange-600 font-bold mb-1">REAKTION:</div>
+                        <div class="font-mono text-slate-800" id="stoich-equation">2 H₂ + O₂ → 2 H₂O</div>
+                    </div>
+                    
+                    <div id="stoich-task" class="text-sm text-slate-700 mb-4">Lade Aufgabe...</div>
+                    
+                    <div class="flex gap-2 mb-3">
+                        <input type="number" id="stoich-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border border-orange-300 rounded-lg px-3 text-slate-800 font-mono focus:border-orange-500 outline-none">
+                        <span class="flex items-center text-sm text-slate-500" id="stoich-unit">mol</span>
+                        <button onclick="checkStoich()" class="bg-orange-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
+                    </div>
+                    
+                    <div id="stoich-feedback" class="hidden p-3 rounded-lg text-sm mb-3"></div>
+                    <button onclick="nextStoich()" id="stoich-next" class="w-full bg-orange-200 text-orange-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
+                </div>
+            </section>
+
+            <!-- Molares Volumen -->
+            <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-cyan-500">
+                <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><span>💨</span> Molares Volumen (Vm = 22.4 L/mol)</h2>
+                <div class="bg-cyan-50 p-4 rounded-xl border border-cyan-200">
+                    <div id="vm-task" class="text-sm mb-4 text-slate-700">Lade Aufgabe...</div>
+                    <div class="flex gap-2">
+                        <input type="number" id="vm-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border border-cyan-300 rounded-lg px-3 text-slate-800 font-mono focus:border-cyan-500 outline-none">
+                        <span class="flex items-center text-sm text-slate-500" id="vm-unit">L</span>
+                        <button onclick="checkVm()" class="bg-cyan-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
+                    </div>
+                    <div id="vm-feedback" class="mt-2 hidden p-2 rounded-lg text-sm"></div>
+                    <button onclick="nextVm()" id="vm-next" class="w-full mt-2 bg-cyan-200 text-cyan-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== PSE RECHNER (NEU) ==================== -->
+        <div id="content-pse" class="tab-content space-y-6">
+            
+            <section class="bg-white rounded-2xl shadow-sm p-4">
+                <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><span>📊</span> PSE Schnellzugriff</h2>
+                <p class="text-sm text-slate-600 mb-4">Tippe auf Elemente, um die molare Masse einer Verbindung zu berechnen.</p>
+                
+                <!-- Mini-PSE -->
+                <div class="overflow-x-auto pb-2 mb-4">
+                    <div class="grid gap-1" style="grid-template-columns: repeat(18, minmax(28px, 1fr)); min-width: 520px;" id="pse-grid">
+                        <!-- Wird dynamisch generiert -->
+                    </div>
+                </div>
+
+                <!-- Formel-Builder -->
+                <div class="bg-slate-100 p-4 rounded-xl">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-sm font-bold text-slate-600">Deine Verbindung:</span>
+                        <button onclick="clearFormula()" class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded tap-active">Löschen</button>
+                    </div>
+                    <div id="formula-display" class="bg-white p-3 rounded-lg border border-slate-200 min-h-[50px] flex flex-wrap items-center gap-1 mb-3">
+                        <span class="text-slate-400 text-sm">Tippe auf Elemente...</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-slate-600">Molare Masse:</div>
+                        <div class="text-2xl font-bold text-blue-600" id="formula-mass">0 g/mol</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PSE Quiz -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-violet-600 to-purple-600 p-3 text-white flex justify-between items-center">
+                    <h2 class="font-bold flex items-center gap-2"><span>🎯</span> M selbst berechnen</h2>
+                    <span class="text-xs bg-white/20 px-2 py-1 rounded font-mono" id="pse-quiz-score">Richtig: 0</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-slate-600 mb-3 text-center">Berechne die molare Masse der Verbindung <b>ohne Taschenrechner</b>!</p>
+                    
+                    <div class="bg-violet-50 border border-violet-200 p-4 rounded-lg mb-4 text-center">
+                        <div class="text-3xl font-bold text-violet-800 font-mono" id="pse-quiz-formula">H₂O</div>
+                        <div class="text-xs text-violet-500 mt-2" id="pse-quiz-hint">H=1, O=16</div>
+                    </div>
+                    
+                    <div class="flex gap-2 mb-3">
+                        <input type="number" id="pse-quiz-answer" inputmode="decimal" placeholder="M = ?" class="flex-grow h-10 bg-white border border-violet-300 rounded-lg px-3 text-slate-800 font-mono focus:border-violet-500 outline-none">
+                        <span class="flex items-center text-sm text-slate-500">g/mol</span>
+                        <button onclick="checkPseQuiz()" class="bg-violet-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
+                    </div>
+                    
+                    <div id="pse-quiz-feedback" class="hidden p-3 rounded-lg text-sm mb-3"></div>
+                    <button onclick="nextPseQuiz()" id="pse-quiz-next" class="w-full bg-violet-200 text-violet-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Toast für Achievements -->
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2 rounded-full shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 text-sm font-bold z-50">
+        🏆 Achievement!
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        // ==================== GLOBALE DATEN ====================
+        const ELEMENTS = {
+            H: {M: 1, name: 'Wasserstoff', color: 'bg-pink-100'},
+            He: {M: 4, name: 'Helium', color: 'bg-purple-100'},
+            Li: {M: 7, name: 'Lithium', color: 'bg-yellow-100'},
+            Be: {M: 9, name: 'Beryllium', color: 'bg-yellow-100'},
+            B: {M: 11, name: 'Bor', color: 'bg-green-100'},
+            C: {M: 12, name: 'Kohlenstoff', color: 'bg-slate-200'},
+            N: {M: 14, name: 'Stickstoff', color: 'bg-pink-100'},
+            O: {M: 16, name: 'Sauerstoff', color: 'bg-pink-100'},
+            F: {M: 19, name: 'Fluor', color: 'bg-cyan-100'},
+            Ne: {M: 20, name: 'Neon', color: 'bg-purple-100'},
+            Na: {M: 23, name: 'Natrium', color: 'bg-yellow-100'},
+            Mg: {M: 24, name: 'Magnesium', color: 'bg-yellow-100'},
+            Al: {M: 27, name: 'Aluminium', color: 'bg-blue-100'},
+            Si: {M: 28, name: 'Silicium', color: 'bg-green-100'},
+            P: {M: 31, name: 'Phosphor', color: 'bg-pink-100'},
+            S: {M: 32, name: 'Schwefel', color: 'bg-pink-100'},
+            Cl: {M: 35.5, name: 'Chlor', color: 'bg-cyan-100'},
+            Ar: {M: 40, name: 'Argon', color: 'bg-purple-100'},
+            K: {M: 39, name: 'Kalium', color: 'bg-yellow-100'},
+            Ca: {M: 40, name: 'Calcium', color: 'bg-yellow-100'},
+            Fe: {M: 56, name: 'Eisen', color: 'bg-orange-100'},
+            Cu: {M: 63.5, name: 'Kupfer', color: 'bg-orange-100'},
+            Zn: {M: 65, name: 'Zink', color: 'bg-orange-100'},
+            Br: {M: 80, name: 'Brom', color: 'bg-cyan-100'},
+            Ag: {M: 108, name: 'Silber', color: 'bg-orange-100'},
+            I: {M: 127, name: 'Iod', color: 'bg-cyan-100'},
+            Au: {M: 197, name: 'Gold', color: 'bg-orange-100'},
+            Pb: {M: 207, name: 'Blei', color: 'bg-blue-100'}
+        };
+
+        const COMPOUNDS = [
+            {formula: 'H₂O', M: 18, elements: [{el:'H', n:2}, {el:'O', n:1}]},
+            {formula: 'CO₂', M: 44, elements: [{el:'C', n:1}, {el:'O', n:2}]},
+            {formula: 'NaCl', M: 58.5, elements: [{el:'Na', n:1}, {el:'Cl', n:1}]},
+            {formula: 'H₂SO₄', M: 98, elements: [{el:'H', n:2}, {el:'S', n:1}, {el:'O', n:4}]},
+            {formula: 'CaCO₃', M: 100, elements: [{el:'Ca', n:1}, {el:'C', n:1}, {el:'O', n:3}]},
+            {formula: 'NaOH', M: 40, elements: [{el:'Na', n:1}, {el:'O', n:1}, {el:'H', n:1}]},
+            {formula: 'HCl', M: 36.5, elements: [{el:'H', n:1}, {el:'Cl', n:1}]},
+            {formula: 'NH₃', M: 17, elements: [{el:'N', n:1}, {el:'H', n:3}]},
+            {formula: 'CH₄', M: 16, elements: [{el:'C', n:1}, {el:'H', n:4}]},
+            {formula: 'C₆H₁₂O₆', M: 180, elements: [{el:'C', n:6}, {el:'H', n:12}, {el:'O', n:6}]},
+            {formula: 'Fe₂O₃', M: 160, elements: [{el:'Fe', n:2}, {el:'O', n:3}]},
+            {formula: 'Al₂O₃', M: 102, elements: [{el:'Al', n:2}, {el:'O', n:3}]},
+            {formula: 'MgO', M: 40, elements: [{el:'Mg', n:1}, {el:'O', n:1}]},
+            {formula: 'KBr', M: 119, elements: [{el:'K', n:1}, {el:'Br', n:1}]},
+            {formula: 'CuSO₄', M: 159.5, elements: [{el:'Cu', n:1}, {el:'S', n:1}, {el:'O', n:4}]}
+        ];
+
+        const EQUATIONS = [
+            {reactants: [{c:2, f:'H₂'}, {c:1, f:'O₂'}], products: [{c:2, f:'H₂O'}], coeffs: [2,1,2]},
+            {reactants: [{c:1, f:'CH₄'}, {c:2, f:'O₂'}], products: [{c:1, f:'CO₂'}, {c:2, f:'H₂O'}], coeffs: [1,2,1,2]},
+            {reactants: [{c:2, f:'Na'}, {c:1, f:'Cl₂'}], products: [{c:2, f:'NaCl'}], coeffs: [2,1,2]},
+            {reactants: [{c:4, f:'Fe'}, {c:3, f:'O₂'}], products: [{c:2, f:'Fe₂O₃'}], coeffs: [4,3,2]},
+            {reactants: [{c:2, f:'H₂O₂'}], products: [{c:2, f:'H₂O'}, {c:1, f:'O₂'}], coeffs: [2,2,1]},
+            {reactants: [{c:1, f:'N₂'}, {c:3, f:'H₂'}], products: [{c:2, f:'NH₃'}], coeffs: [1,3,2]},
+            {reactants: [{c:2, f:'Mg'}, {c:1, f:'O₂'}], products: [{c:2, f:'MgO'}], coeffs: [2,1,2]},
+            {reactants: [{c:1, f:'CaCO₃'}], products: [{c:1, f:'CaO'}, {c:1, f:'CO₂'}], coeffs: [1,1,1]}
+        ];
+
+        // ==================== STATE ====================
+        let state = {
+            totalXP: 0,
+            l1Streak: 0,
+            l1Matches: 0,
+            balScore: 0,
+            csiScore: 0,
+            eqScore: 0,
+            stoichScore: 0,
+            pseQuizScore: 0,
+            concScore: 0,
+            vmScore: 0
+        };
+
+        // Load from localStorage
+        function loadState() {
+            const saved = localStorage.getItem('chemieMasterState');
+            if (saved) {
+                state = {...state, ...JSON.parse(saved)};
+                updateXPDisplay();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('chemieMasterState', JSON.stringify(state));
+        }
+
+        function addXP(amount) {
+            state.totalXP += amount;
+            updateXPDisplay();
+            saveState();
+        }
+
+        function updateXPDisplay() {
+            document.getElementById('total-xp').textContent = state.totalXP;
+            document.getElementById('bal-score').textContent = `Gelöst: ${state.balScore}`;
+            document.getElementById('csi-score').textContent = `Fälle: ${state.csiScore}`;
+            document.getElementById('balance-eq-score').textContent = `Gelöst: ${state.eqScore}`;
+            document.getElementById('stoich-score').textContent = `Gelöst: ${state.stoichScore}`;
+            document.getElementById('pse-quiz-score').textContent = `Richtig: ${state.pseQuizScore}`;
+            document.getElementById('l1-streak').textContent = `🔥 ${state.l1Streak}`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 2000);
+        }
+
+        // ==================== INIT ====================
+        window.onload = function() {
+            loadState();
+            initLevel1();
+            initLevel2();
+            initLevel3();
+            initPSE();
+        };
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('content-'+tab).classList.add('active');
+            
+            ['lvl1','lvl2','lvl3','pse'].forEach(t => {
+                const btn = document.getElementById('btn-'+t);
+                if(t === tab) {
+                    btn.className = "flex-1 py-2 px-2 rounded-lg bg-white shadow-sm text-blue-600 transition-all tap-active whitespace-nowrap";
+                } else {
+                    btn.className = "flex-1 py-2 px-2 rounded-lg text-slate-500 transition-all tap-active whitespace-nowrap";
+                }
+            });
+        }
+
+        // ==================== LEVEL 1 ====================
+        let l1First = null;
+        let l1CurrentM = 197;
+        let l1CurrentSub = 'Au';
+        let l1Curr = {};
+        let hintStep = 0;
+        let hintSteps = [];
+
+        function initLevel1() {
+            resetMatching();
+            
+            document.getElementById('l1-slider').addEventListener('input', (e) => {
+                const v = parseFloat(e.target.value);
+                document.getElementById('l1-disp-n').innerText = v.toFixed(1);
+                document.getElementById('l1-disp-m').innerText = (v * l1CurrentM).toFixed(1);
+            });
+            
+            nextCalcL1();
+            nextConc();
+        }
+
+        function resetMatching() {
+            const grid = document.getElementById('match-grid');
+            grid.innerHTML = '';
+            state.l1Matches = 0;
+            l1First = null;
+            
+            const pairs = [
+                {l:'H₂', r:'2 g/mol'}, 
+                {l:'O₂', r:'32 g/mol'}, 
+                {l:'H₂O', r:'18 g/mol'}, 
+                {l:'CO₂', r:'44 g/mol'},
+                {l:'NaCl', r:'58.5 g/mol'},
+                {l:'NH₃', r:'17 g/mol'}
+            ];
+            let items = [];
+            pairs.forEach(p => {
+                items.push(createMatchBtn(p.l, p.l));
+                items.push(createMatchBtn(p.r, p.l));
+            });
+            items.sort(() => Math.random() - 0.5);
+            items.forEach(i => grid.appendChild(i));
+        }
+
+        function createMatchBtn(text, val) {
+            const b = document.createElement('button');
+            b.className = "bg-slate-50 p-3 rounded-xl font-bold border-2 border-transparent tap-active no-select shadow-sm text-sm";
+            b.innerText = text;
+            b.setAttribute('data-val', val);
+            b.onclick = function() { checkMatchL1(this); };
+            return b;
+        }
+
+        function checkMatchL1(btn) {
+            if(btn.classList.contains('opacity-50') || btn === l1First) return;
+            btn.classList.add('ring-2', 'ring-blue-400', 'bg-blue-100');
+            
+            if(!l1First) { 
+                l1First = btn; 
+                return; 
+            }
+            
+            if(l1First.getAttribute('data-val') === btn.getAttribute('data-val')) {
+                [btn, l1First].forEach(el => { 
+                    el.className = "bg-green-100 p-3 rounded-xl font-bold border-2 border-green-200 text-green-700 opacity-50 tap-active shadow-sm text-sm"; 
+                    el.innerText += ' ✓'; 
+                });
+                state.l1Matches++;
+                addXP(5);
+                if(state.l1Matches === 6) {
+                    showToast('🎯 Alle Paare gefunden! +20 XP');
+                    addXP(20);
+                }
+            } else {
+                [btn, l1First].forEach(el => el.classList.add('bg-red-100'));
+                setTimeout(() => { 
+                    [btn, l1First].forEach(el => el.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-100', 'bg-red-100')); 
+                    l1First = null; 
+                }, 500);
+                return;
+            }
+            l1First = null;
+        }
+
+        function setQuickScale(name, M) {
+            l1CurrentM = M;
+            l1CurrentSub = name;
+            document.getElementById('l1-current-sub').textContent = name;
+            document.getElementById('l1-current-M').textContent = M;
+            
+            const v = parseFloat(document.getElementById('l1-slider').value);
+            document.getElementById('l1-disp-m').innerText = (v * M).toFixed(1);
+            
+            document.querySelectorAll('.quick-scale-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-blue-500');
+            });
+            event.target.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500');
+        }
+
+        function nextCalcL1() {
+            document.getElementById('l1-calc-feedback').classList.add('hidden');
+            document.getElementById('l1-btn-next').classList.add('hidden');
+            document.getElementById('hint-container').classList.add('hidden');
+            hintStep = 0;
+            
+            const inp = document.getElementById('l1-user-answ');
+            inp.value = '';
+            inp.disabled = false;
+            
+            const item = COMPOUNDS[Math.floor(Math.random() * COMPOUNDS.length)];
+            const type = Math.random() > 0.5 ? 'm' : 'n';
+            let q, u, cor, txt;
+
+            if(type === 'm') {
+                const n = [0.5, 1, 2, 2.5, 3, 5][Math.floor(Math.random() * 6)];
+                cor = (n * item.M).toFixed(1);
+                q = `Masse (m) von <b>${n} mol</b> ${item.formula}?`;
+                u = "g";
+                txt = `m = ${n} · ${item.M} = ${cor}`;
+                hintSteps = [
+                    `Formel: m = n · M`,
+                    `Einsetzen: m = ${n} mol · ${item.M} g/mol`,
+                    `Ergebnis: m = ${cor} g`
+                ];
+            } else {
+                const tN = [0.5, 1, 2, 5, 10][Math.floor(Math.random() * 5)];
+                const m = (tN * item.M).toFixed(1);
+                cor = tN.toFixed(1);
+                q = `Wie viel Mol (n) sind <b>${m} g</b> ${item.formula}?`;
+                u = "mol";
+                txt = `n = ${m} ÷ ${item.M} = ${cor}`;
+                hintSteps = [
+                    `Formel: n = m / M`,
+                    `Einsetzen: n = ${m} g / ${item.M} g/mol`,
+                    `Ergebnis: n = ${cor} mol`
+                ];
+            }
+            
+            document.getElementById('l1-calc-text').innerHTML = q + `<br><span class='text-sm opacity-60'>(M = ${item.M} g/mol)</span>`;
+            document.getElementById('l1-unit').innerText = u;
+            l1Curr = {cor: parseFloat(cor), txt};
+            
+            // Reset hints
+            document.querySelectorAll('.hint-step').forEach((el, i) => {
+                el.classList.remove('visible');
+                el.textContent = hintSteps[i] || '';
+            });
+        }
+
+        function toggleHint() {
+            const container = document.getElementById('hint-container');
+            container.classList.toggle('hidden');
+        }
+
+        function revealNextHint() {
+            if(hintStep < 3) {
+                document.getElementById(`hint-step-${hintStep + 1}`).classList.add('visible');
+                hintStep++;
+                if(hintStep >= 3) {
+                    document.getElementById('reveal-hint-btn').classList.add('hidden');
+                }
+            }
+        }
+
+        function checkCalcL1() {
+            const val = parseFloat(document.getElementById('l1-user-answ').value.replace(',','.'));
+            if(isNaN(val)) return;
+            
+            const fb = document.getElementById('l1-calc-feedback');
+            fb.classList.remove('hidden','bg-green-500/20','bg-red-500/20');
+            
+            if(Math.abs(val - l1Curr.cor) < 0.2) {
+                fb.classList.add('bg-green-500/20','text-green-300');
+                fb.innerHTML = `✅ Richtig!`;
+                state.l1Streak++;
+                addXP(10 + state.l1Streak);
+                
+                if(state.l1Streak === 5) showToast('🔥 5er Streak! +25 Bonus');
+                if(state.l1Streak === 10) showToast('🔥🔥 10er Streak! +50 Bonus');
+            } else {
+                fb.classList.add('bg-red-500/20','text-red-300');
+                fb.innerHTML = `Lösung: ${l1Curr.txt}`;
+                state.l1Streak = 0;
+            }
+            
+            updateXPDisplay();
+            saveState();
+            document.getElementById('l1-btn-next').classList.remove('hidden');
+            document.getElementById('l1-user-answ').disabled = true;
+        }
+
+        // Konzentration
+        let concCurr = {};
+        function nextConc() {
+            document.getElementById('conc-feedback').classList.add('hidden');
+            document.getElementById('conc-next').classList.add('hidden');
+            document.getElementById('conc-answer').value = '';
+            document.getElementById('conc-answer').disabled = false;
+            
+            const type = Math.floor(Math.random() * 3);
+            let task, unit, answer;
+            
+            if(type === 0) {
+                // Berechne c
+                const n = [0.1, 0.2, 0.5, 1, 2][Math.floor(Math.random() * 5)];
+                const V = [0.1, 0.25, 0.5, 1, 2][Math.floor(Math.random() * 5)];
+                answer = n / V;
+                task = `<b>${n} mol</b> NaCl in <b>${V} L</b> Wasser. Berechne c.`;
+                unit = 'mol/L';
+            } else if(type === 1) {
+                // Berechne n
+                const c = [0.1, 0.5, 1, 2][Math.floor(Math.random() * 4)];
+                const V = [0.1, 0.25, 0.5, 1][Math.floor(Math.random() * 4)];
+                answer = c * V;
+                task = `c = <b>${c} mol/L</b>, V = <b>${V} L</b>. Berechne n.`;
+                unit = 'mol';
+            } else {
+                // Berechne V
+                const n = [0.1, 0.2, 0.5, 1][Math.floor(Math.random() * 4)];
+                const c = [0.1, 0.5, 1, 2][Math.floor(Math.random() * 4)];
+                answer = n / c;
+                task = `n = <b>${n} mol</b>, c = <b>${c} mol/L</b>. Berechne V.`;
+                unit = 'L';
+            }
+            
+            document.getElementById('conc-task').innerHTML = task;
+            document.getElementById('conc-unit').textContent = unit;
+            concCurr = {answer: parseFloat(answer.toFixed(2))};
+        }
+
+        function checkConc() {
+            const val = parseFloat(document.getElementById('conc-answer').value.replace(',','.'));
+            if(isNaN(val)) return;
+            
+            const fb = document.getElementById('conc-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            if(Math.abs(val - concCurr.answer) < 0.05) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Richtig! ${concCurr.answer}`;
+                state.concScore++;
+                addXP(15);
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Lösung: ${concCurr.answer}`;
+            }
+            
+            document.getElementById('conc-next').classList.remove('hidden');
+            document.getElementById('conc-answer').disabled = true;
+        }
+
+        // ==================== LEVEL 2 ====================
+        let balCurrent = {};
+
+        function initLevel2() {
+            document.getElementById('l2-slider').addEventListener('input', checkBalance);
+            nextBalanceTask();
+            initCSI();
+        }
+
+        function nextBalanceTask() {
+            const options = [
+                {n:'Fe', M:56}, {n:'Au', M:197}, {n:'Al', M:27}, 
+                {n:'S', M:32}, {n:'NaCl', M:58.5}, {n:'C', M:12},
+                {n:'Cu', M:63.5}, {n:'Zn', M:65}, {n:'Mg', M:24}
+            ];
+            const sub = options[Math.floor(Math.random() * options.length)];
+            
+            const maxMol = 360 / sub.M;
+            let mol = (Math.ceil(Math.random() * (maxMol * 2)) / 2).toFixed(1);
+            if(mol < 0.5) mol = 0.5;
+
+            balCurrent = {
+                targetMass: mol * sub.M,
+                subName: sub.n,
+                subMol: mol
+            };
+
+            document.getElementById('l2-left-label').innerText = `${balCurrent.subMol} mol ${balCurrent.subName}`;
+            document.getElementById('l2-slider').value = 0;
+            document.getElementById('l2-slider').disabled = false;
+            document.getElementById('l2-slider').dataset.done = "";
+            document.getElementById('l2-bal-disp').innerText = "0";
+            document.getElementById('l2-water-fill').style.height = "0%";
+            document.getElementById('l2-beam').style.transform = 'rotate(-10deg)';
+            document.getElementById('l2-beam').classList.replace('bg-emerald-500','bg-slate-600');
+            document.getElementById('l2-feedback').style.opacity = '0';
+            document.getElementById('btn-next-bal').classList.add('hidden');
+        }
+
+        function checkBalance(e) {
+            const userMol = parseFloat(e.target.value);
+            const userMass = userMol * 18;
+            
+            document.getElementById('l2-bal-disp').innerText = userMol.toFixed(1);
+            document.getElementById('l2-water-fill').style.height = Math.min((userMol/25)*100, 100) + '%';
+
+            const diff = userMass - balCurrent.targetMass;
+            const beam = document.getElementById('l2-beam');
+            const fb = document.getElementById('l2-feedback');
+
+            if(Math.abs(diff) < 5) {
+                beam.style.transform = 'rotate(0deg)';
+                beam.classList.replace('bg-slate-600','bg-emerald-500');
+                fb.style.opacity = '1';
+                if(!e.target.dataset.done) {
+                    state.balScore++;
+                    addXP(20);
+                    updateXPDisplay();
+                    confetti({origin:{y:0.5}, colors:['#2563eb', '#ffffff'], particleCount: 30});
+                    e.target.dataset.done = "true";
+                    document.getElementById('btn-next-bal').classList.remove('hidden');
+                    e.target.disabled = true;
+                }
+            } else {
+                let angle = Math.max(Math.min(diff/5, 10), -10);
+                beam.style.transform = `rotate(${angle}deg)`;
+                beam.classList.replace('bg-emerald-500','bg-slate-600');
+                fb.style.opacity = '0';
+            }
+        }
+
+        // CSI
+        let csiCurr = {};
+        const csiSuspects = [
+            {n:'Al', M:27}, {n:'Fe', M:56}, {n:'Au', M:197}, 
+            {n:'C', M:12}, {n:'He', M:4}, {n:'Cu', M:63.5},
+            {n:'Zn', M:65}, {n:'Ag', M:108}, {n:'Pb', M:207}
+        ];
+
+        function initCSI() {
+            const grid = document.getElementById('csi-grid');
+            grid.innerHTML = '';
+            csiSuspects.forEach(s => {
+                const b = document.createElement('button');
+                b.className = "suspect-btn p-2 rounded-lg border-2 border-slate-200 bg-white hover:border-blue-400 text-left transition tap-active";
+                b.innerHTML = `<div class="text-xs text-slate-400">${s.n}</div><div class="font-bold text-slate-800">${s.M}</div>`;
+                b.onclick = function() { checkCSI(this, s.M); };
+                grid.appendChild(b);
+            });
+            nextCase();
+        }
+
+        function nextCase() {
+            csiCurr = csiSuspects[Math.floor(Math.random() * csiSuspects.length)];
+            const n = [0.5, 1, 2, 5, 10][Math.floor(Math.random() * 5)];
+            const m = parseFloat((n * csiCurr.M).toFixed(1));
+            
+            document.getElementById('csi-m').innerText = m + " g";
+            document.getElementById('csi-n').innerText = n + " mol";
+            
+            document.querySelectorAll('.suspect-btn').forEach(b => {
+                b.className = "suspect-btn p-2 rounded-lg border-2 border-slate-200 bg-white hover:border-blue-400 text-left transition tap-active";
+                b.disabled = false;
+                b.classList.remove('opacity-40');
+            });
+            document.getElementById('csi-next-btn').classList.add('hidden');
+        }
+
+        function checkCSI(btn, val) {
+            if(Math.abs(val - csiCurr.M) < 0.1) {
+                btn.className = "suspect-btn p-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-900 text-left transition";
+                state.csiScore++;
+                addXP(25);
+                updateXPDisplay();
+                confetti({origin:{y:0.8}, particleCount: 40});
+                document.getElementById('csi-next-btn').classList.remove('hidden');
+                document.querySelectorAll('.suspect-btn').forEach(b => { 
+                    if(b !== btn) { 
+                        b.classList.add('opacity-40'); 
+                        b.disabled = true; 
+                    } 
+                });
+            } else {
+                btn.classList.add('bg-red-50','border-red-300');
+                setTimeout(() => btn.classList.remove('bg-red-50','border-red-300'), 500);
+            }
+        }
+
+        // ==================== LEVEL 3: STÖCHIOMETRIE ====================
+        let currentEq = null;
+        let stoichCurr = {};
+        let vmCurr = {};
+
+        function initLevel3() {
+            nextEquation();
+            nextStoich();
+            nextVm();
+        }
+
+        function nextEquation() {
+            currentEq = EQUATIONS[Math.floor(Math.random() * EQUATIONS.length)];
+            document.getElementById('eq-feedback').classList.add('hidden');
+            document.getElementById('eq-next-btn').classList.add('hidden');
+            
+            const display = document.getElementById('equation-display');
+            display.innerHTML = '';
+            
+            // Reactants
+            currentEq.reactants.forEach((r, i) => {
+                if(i > 0) display.innerHTML += '<span class="text-slate-400 mx-1">+</span>';
+                display.innerHTML += `<input type="number" class="eq-input w-8 h-8 text-center border-2 border-slate-300 rounded bg-white text-slate-800 font-bold" min="1" max="9" value="1">`;
+                display.innerHTML += `<span class="ml-1">${r.f}</span>`;
+            });
+            
+            display.innerHTML += '<span class="mx-2 text-slate-400">→</span>';
+            
+            // Products
+            currentEq.products.forEach((p, i) => {
+                if(i > 0) display.innerHTML += '<span class="text-slate-400 mx-1">+</span>';
+                display.innerHTML += `<input type="number" class="eq-input w-8 h-8 text-center border-2 border-slate-300 rounded bg-white text-slate-800 font-bold" min="1" max="9" value="1">`;
+                display.innerHTML += `<span class="ml-1">${p.f}</span>`;
+            });
+        }
+
+        function checkEquation() {
+            const inputs = document.querySelectorAll('.eq-input');
+            const userCoeffs = Array.from(inputs).map(i => parseInt(i.value) || 1);
+            
+            const fb = document.getElementById('eq-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            // Check if coefficients match (allow scaled versions)
+            const correct = currentEq.coeffs;
+            const ratio = userCoeffs[0] / correct[0];
+            let isCorrect = true;
+            
+            for(let i = 0; i < correct.length; i++) {
+                if(Math.abs(userCoeffs[i] - correct[i] * ratio) > 0.01) {
+                    isCorrect = false;
+                    break;
+                }
+            }
+            
+            if(isCorrect && userCoeffs.every(c => c >= 1)) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = '✅ Korrekt ausgeglichen!';
+                state.eqScore++;
+                addXP(30);
+                updateXPDisplay();
+                document.getElementById('eq-next-btn').classList.remove('hidden');
+                inputs.forEach(i => i.disabled = true);
+                confetti({particleCount: 30, spread: 60});
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Nicht ausgeglichen. Lösung: ${correct.join(', ')}`;
+                document.getElementById('eq-next-btn').classList.remove('hidden');
+            }
+        }
+
+        // Stöchiometrische Berechnungen
+        function nextStoich() {
+            document.getElementById('stoich-feedback').classList.add('hidden');
+            document.getElementById('stoich-next').classList.add('hidden');
+            document.getElementById('stoich-answer').value = '';
+            document.getElementById('stoich-answer').disabled = false;
+            
+            const reactions = [
+                {eq: '2 H₂ + O₂ → 2 H₂O', ratio: 2, from: 'H₂', to: 'H₂O'},
+                {eq: '2 Na + Cl₂ → 2 NaCl', ratio: 2, from: 'Na', to: 'NaCl'},
+                {eq: 'N₂ + 3 H₂ → 2 NH₃', ratio: 2/1, from: 'N₂', to: 'NH₃'},
+                {eq: '4 Fe + 3 O₂ → 2 Fe₂O₃', ratio: 2/4, from: 'Fe', to: 'Fe₂O₃'},
+                {eq: 'CH₄ + 2 O₂ → CO₂ + 2 H₂O', ratio: 1, from: 'CH₄', to: 'CO₂'}
+            ];
+            
+            const r = reactions[Math.floor(Math.random() * reactions.length)];
+            const nStart = [1, 2, 3, 4, 5][Math.floor(Math.random() * 5)];
+            const answer = nStart * r.ratio;
+            
+            document.getElementById('stoich-equation').textContent = r.eq;
+            document.getElementById('stoich-task').innerHTML = `Bei <b>${nStart} mol ${r.from}</b>: Wie viel mol <b>${r.to}</b> entstehen?`;
+            document.getElementById('stoich-unit').textContent = 'mol';
+            
+            stoichCurr = {answer: parseFloat(answer.toFixed(2))};
+        }
+
+        function checkStoich() {
+            const val = parseFloat(document.getElementById('stoich-answer').value.replace(',','.'));
+            if(isNaN(val)) return;
+            
+            const fb = document.getElementById('stoich-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            if(Math.abs(val - stoichCurr.answer) < 0.1) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Richtig!`;
+                state.stoichScore++;
+                addXP(25);
+                updateXPDisplay();
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Lösung: ${stoichCurr.answer} mol`;
+            }
+            
+            document.getElementById('stoich-next').classList.remove('hidden');
+            document.getElementById('stoich-answer').disabled = true;
+        }
+
+        // Molares Volumen
+        function nextVm() {
+            document.getElementById('vm-feedback').classList.add('hidden');
+            document.getElementById('vm-next').classList.add('hidden');
+            document.getElementById('vm-answer').value = '';
+            document.getElementById('vm-answer').disabled = false;
+            
+            const type = Math.random() > 0.5;
+            let task, unit, answer;
+            
+            if(type) {
+                // n → V
+                const n = [0.5, 1, 2, 5][Math.floor(Math.random() * 4)];
+                answer = n * 22.4;
+                task = `Volumen von <b>${n} mol</b> Gas (bei STP)?`;
+                unit = 'L';
+            } else {
+                // V → n
+                const V = [11.2, 22.4, 44.8, 112][Math.floor(Math.random() * 4)];
+                answer = V / 22.4;
+                task = `Stoffmenge in <b>${V} L</b> Gas (bei STP)?`;
+                unit = 'mol';
+            }
+            
+            document.getElementById('vm-task').innerHTML = task;
+            document.getElementById('vm-unit').textContent = unit;
+            vmCurr = {answer: parseFloat(answer.toFixed(2))};
+        }
+
+        function checkVm() {
+            const val = parseFloat(document.getElementById('vm-answer').value.replace(',','.'));
+            if(isNaN(val)) return;
+            
+            const fb = document.getElementById('vm-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            if(Math.abs(val - vmCurr.answer) < 0.1) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Richtig!`;
+                state.vmScore++;
+                addXP(15);
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Lösung: ${vmCurr.answer}`;
+            }
+            
+            document.getElementById('vm-next').classList.remove('hidden');
+            document.getElementById('vm-answer').disabled = true;
+        }
+
+        // ==================== PSE ====================
+        let formulaElements = [];
+        let pseQuizCurr = {};
+
+        function initPSE() {
+            const grid = document.getElementById('pse-grid');
+            
+            // Simplified PSE layout (main group elements)
+            const layout = [
+                ['H','','','','','','','','','','','','','','','','','He'],
+                ['Li','Be','','','','','','','','','','','B','C','N','O','F','Ne'],
+                ['Na','Mg','','','','','','','','','','','Al','Si','P','S','Cl','Ar'],
+                ['K','Ca','','','','','','','Fe','','Cu','Zn','','','','Br','',''],
+                ['','','','','','','','','','','Ag','','','','','I','',''],
+                ['','','','','','','','','','','Au','Pb','','','','','','']
+            ];
+            
+            layout.forEach(row => {
+                row.forEach(el => {
+                    const cell = document.createElement('div');
+                    if(el && ELEMENTS[el]) {
+                        cell.className = `pse-element ${ELEMENTS[el].color} rounded text-center p-1 text-xs font-bold border border-slate-200 shadow-sm`;
+                        cell.innerHTML = `<div>${el}</div><div class="text-[8px] text-slate-500">${ELEMENTS[el].M}</div>`;
+                        cell.onclick = () => addToFormula(el);
+                    } else {
+                        cell.className = 'bg-transparent';
+                    }
+                    grid.appendChild(cell);
+                });
+            });
+            
+            nextPseQuiz();
+        }
+
+        function addToFormula(el) {
+            formulaElements.push({el, count: 1});
+            updateFormulaDisplay();
+        }
+
+        function updateFormulaDisplay() {
+            const display = document.getElementById('formula-display');
+            
+            if(formulaElements.length === 0) {
+                display.innerHTML = '<span class="text-slate-400 text-sm">Tippe auf Elemente...</span>';
+                document.getElementById('formula-mass').textContent = '0 g/mol';
+                return;
+            }
+            
+            display.innerHTML = '';
+            let totalMass = 0;
+            
+            formulaElements.forEach((item, idx) => {
+                const badge = document.createElement('div');
+                badge.className = 'flex items-center gap-1 bg-slate-100 rounded-lg px-2 py-1';
+                badge.innerHTML = `
+                    <span class="font-bold">${item.el}</span>
+                    <input type="number" min="1" max="20" value="${item.count}" 
+                           class="w-8 h-6 text-center text-xs border rounded" 
+                           onchange="updateCount(${idx}, this.value)">
+                    <button onclick="removeFromFormula(${idx})" class="text-red-500 text-xs ml-1">✕</button>
+                `;
+                display.appendChild(badge);
+                
+                totalMass += ELEMENTS[item.el].M * item.count;
+            });
+            
+            document.getElementById('formula-mass').textContent = totalMass.toFixed(1) + ' g/mol';
+        }
+
+        function updateCount(idx, val) {
+            formulaElements[idx].count = parseInt(val) || 1;
+            updateFormulaDisplay();
+        }
+
+        function removeFromFormula(idx) {
+            formulaElements.splice(idx, 1);
+            updateFormulaDisplay();
+        }
+
+        function clearFormula() {
+            formulaElements = [];
+            updateFormulaDisplay();
+        }
+
+        // PSE Quiz
+        function nextPseQuiz() {
+            document.getElementById('pse-quiz-feedback').classList.add('hidden');
+            document.getElementById('pse-quiz-next').classList.add('hidden');
+            document.getElementById('pse-quiz-answer').value = '';
+            document.getElementById('pse-quiz-answer').disabled = false;
+            
+            const compound = COMPOUNDS[Math.floor(Math.random() * COMPOUNDS.length)];
+            
+            document.getElementById('pse-quiz-formula').textContent = compound.formula;
+            
+            // Generate hint
+            const hints = compound.elements.map(e => `${e.el}=${ELEMENTS[e.el].M}`).join(', ');
+            document.getElementById('pse-quiz-hint').textContent = hints;
+            
+            pseQuizCurr = {answer: compound.M};
+        }
+
+        function checkPseQuiz() {
+            const val = parseFloat(document.getElementById('pse-quiz-answer').value.replace(',','.'));
+            if(isNaN(val)) return;
+            
+            const fb = document.getElementById('pse-quiz-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            if(Math.abs(val - pseQuizCurr.answer) < 1) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Richtig! M = ${pseQuizCurr.answer} g/mol`;
+                state.pseQuizScore++;
+                addXP(20);
+                updateXPDisplay();
+                confetti({particleCount: 20, spread: 40});
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Lösung: M = ${pseQuizCurr.answer} g/mol`;
+            }
+            
+            document.getElementById('pse-quiz-next').classList.remove('hidden');
+            document.getElementById('pse-quiz-answer').disabled = true;
+        }
+    </script>
+</body>
+</html>
