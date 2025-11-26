@@ -28,14 +28,12 @@
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
         .pulse { animation: pulse 0.5s ease-in-out; }
+        .shake { animation: shake 0.3s ease-in-out; }
         
-        .pse-element { 
-            transition: all 0.2s; 
-            cursor: pointer;
-        }
+        .pse-element { transition: all 0.2s; cursor: pointer; }
         .pse-element:hover { transform: scale(1.1); z-index: 10; }
-        .pse-element.selected { ring: 2px solid #3b82f6; transform: scale(1.1); }
         
         .hint-step { 
             border-left: 3px solid #fbbf24; 
@@ -47,19 +45,44 @@
         }
         .hint-step.visible { opacity: 1; transform: translateX(0); }
         
-        .progress-ring { transition: stroke-dashoffset 0.5s ease-out; }
-        
-        .molecule-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
+        .formula-triangle {
+            position: relative;
+            width: 180px;
+            height: 160px;
+            margin: 0 auto;
         }
+        .triangle-segment {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+        .triangle-segment:hover { transform: scale(1.1); }
+        .triangle-segment.active { ring: 3px; }
+        
+        .drag-item {
+            cursor: grab;
+            transition: all 0.2s;
+            touch-action: none;
+        }
+        .drag-item:active { cursor: grabbing; }
+        .drag-item.dragging { opacity: 0.5; transform: scale(1.05); }
+        .drop-zone.drag-over { background: #dbeafe; border-color: #3b82f6; }
+        
+        .timer-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+            border-radius: 3px;
+            transition: width 0.1s linear;
+        }
+        
+        .glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+        .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
     </style>
 </head>
 <body class="pb-32 text-slate-800 bg-slate-100">
@@ -90,7 +113,7 @@
         <!-- ==================== LEVEL 1: BASICS ==================== -->
         <div id="content-lvl1" class="tab-content active space-y-6">
             
-            <!-- Matching Game mit Reset -->
+            <!-- 1. Matching Game mit Reset -->
             <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-blue-500">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="font-bold text-slate-800 flex items-center gap-2"><span>🧩</span> Zuordnung</h2>
@@ -99,11 +122,11 @@
                 <div class="grid grid-cols-2 gap-2" id="match-grid"></div>
             </section>
 
-            <!-- Goldwaage mit mehr Stoffen -->
+            <!-- 2. Goldwaage mit mehr Stoffen -->
             <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-green-500">
                 <h2 class="font-bold text-slate-800 mb-2 flex items-center gap-2"><span>⚖️</span> Schnellwaage</h2>
                 <div class="flex gap-2 mb-3 overflow-x-auto pb-2">
-                    <button onclick="setQuickScale('Au', 197)" class="quick-scale-btn bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">Au (197)</button>
+                    <button onclick="setQuickScale('Au', 197)" class="quick-scale-btn bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap ring-2 ring-offset-2 ring-yellow-500">Au (197)</button>
                     <button onclick="setQuickScale('Fe', 56)" class="quick-scale-btn bg-slate-100 text-slate-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">Fe (56)</button>
                     <button onclick="setQuickScale('Cu', 63.5)" class="quick-scale-btn bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">Cu (63.5)</button>
                     <button onclick="setQuickScale('NaCl', 58.5)" class="quick-scale-btn bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold tap-active whitespace-nowrap">NaCl (58.5)</button>
@@ -120,7 +143,7 @@
                 </div>
             </section>
 
-            <!-- Formel-Training MIT HILFESYSTEM -->
+            <!-- 3. Formel-Training MIT HILFESYSTEM -->
             <section class="bg-slate-800 text-white rounded-2xl shadow-lg p-5 border-t-4 border-yellow-400 relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-500 opacity-10 blur-2xl rounded-full -mr-10 -mt-10"></div>
                 <div class="flex justify-between items-center mb-4">
@@ -155,18 +178,86 @@
                 </div>
             </section>
 
-            <!-- Konzentration-Modul (NEU) -->
+            <!-- 4. NEU: Formel-Dreieck Interaktiv -->
             <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-purple-500">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2"><span>🔺</span> Formel-Dreieck</h2>
+                    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-mono" id="triangle-score">Gelöst: 0</span>
+                </div>
+                <p class="text-sm text-slate-600 mb-4 text-center">Tippe auf die gesuchte Größe und berechne sie!</p>
+                
+                <!-- Dreieck Visualisierung -->
+                <div class="flex justify-center mb-4">
+                    <div class="relative">
+                        <!-- SVG Dreieck -->
+                        <svg width="200" height="180" viewBox="0 0 200 180">
+                            <polygon points="100,10 10,170 190,170" fill="none" stroke="#c084fc" stroke-width="3"/>
+                            <line x1="10" y1="170" x2="190" y2="170" stroke="#c084fc" stroke-width="3"/>
+                            <line x1="100" y1="90" x2="10" y2="170" stroke="#c084fc" stroke-width="2" stroke-dasharray="5,5"/>
+                            <line x1="100" y1="90" x2="190" y2="170" stroke="#c084fc" stroke-width="2" stroke-dasharray="5,5"/>
+                        </svg>
+                        <!-- Interaktive Bereiche -->
+                        <button id="tri-m" onclick="selectTriangle('m')" class="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-16 bg-purple-100 hover:bg-purple-200 rounded-xl flex items-center justify-center text-xl font-bold text-purple-800 transition-all">m</button>
+                        <button id="tri-n" onclick="selectTriangle('n')" class="absolute bottom-2 left-4 w-16 h-16 bg-blue-100 hover:bg-blue-200 rounded-xl flex items-center justify-center text-xl font-bold text-blue-800 transition-all">n</button>
+                        <button id="tri-M" onclick="selectTriangle('M')" class="absolute bottom-2 right-4 w-16 h-16 bg-green-100 hover:bg-green-200 rounded-xl flex items-center justify-center text-xl font-bold text-green-800 transition-all">M</button>
+                    </div>
+                </div>
+                
+                <div id="triangle-task" class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-3">
+                    <div class="text-center text-slate-600" id="triangle-question">Tippe auf die Größe, die gesucht ist...</div>
+                    <div class="text-center text-lg font-mono font-bold text-slate-800 mt-2" id="triangle-given"></div>
+                </div>
+                
+                <div id="triangle-input-area" class="hidden">
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" id="triangle-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border-2 border-purple-300 rounded-lg px-3 font-mono focus:border-purple-500 outline-none">
+                        <span class="flex items-center text-sm text-slate-500 font-bold" id="triangle-unit">?</span>
+                        <button onclick="checkTriangle()" class="bg-purple-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
+                    </div>
+                </div>
+                <div id="triangle-feedback" class="hidden p-3 rounded-lg text-sm mb-2"></div>
+                <button onclick="nextTriangle()" id="triangle-next" class="w-full bg-purple-200 text-purple-800 py-2 rounded-lg font-bold hidden tap-active">Nächste Aufgabe ➜</button>
+            </section>
+
+            <!-- 5. NEU: Schnellsortieren -->
+            <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-amber-500">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2"><span>📊</span> Massen-Rangliste</h2>
+                    <span class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded font-mono" id="sort-score">Gelöst: 0</span>
+                </div>
+                <p class="text-sm text-slate-600 mb-3 text-center">Sortiere die Stoffe nach <b>Masse</b> – von leicht nach schwer!</p>
+                
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 mb-4">
+                    <div class="text-xs text-amber-600 font-bold mb-2">STOFFE ZUM SORTIEREN:</div>
+                    <div id="sort-items" class="flex flex-wrap gap-2 justify-center min-h-[60px]">
+                        <!-- Dynamisch generiert -->
+                    </div>
+                </div>
+                
+                <div class="text-xs text-slate-500 text-center mb-2">⬇️ Hierhin ziehen (leicht → schwer):</div>
+                <div id="sort-dropzone" class="bg-slate-100 p-3 rounded-xl border-2 border-dashed border-slate-300 min-h-[70px] flex flex-wrap gap-2 justify-center items-center transition-all">
+                    <span class="text-slate-400 text-sm" id="sort-placeholder">Stoffe hierher ziehen...</span>
+                </div>
+                
+                <div id="sort-feedback" class="hidden p-3 rounded-lg text-sm mt-3"></div>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="checkSort()" id="sort-check-btn" class="flex-1 bg-amber-500 text-white py-2 rounded-lg font-bold tap-active">Prüfen</button>
+                    <button onclick="nextSort()" id="sort-next-btn" class="flex-1 bg-slate-200 text-slate-600 py-2 rounded-lg font-bold tap-active hidden">Weiter ➜</button>
+                </div>
+            </section>
+
+            <!-- 6. Konzentration-Modul -->
+            <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-teal-500">
                 <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><span>🧪</span> Konzentration (c = n/V)</h2>
-                <div class="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                <div class="bg-teal-50 p-4 rounded-xl border border-teal-200">
                     <div id="conc-task" class="text-sm mb-4 text-slate-700">Lade Aufgabe...</div>
                     <div class="flex gap-2">
-                        <input type="number" id="conc-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border border-purple-300 rounded-lg px-3 text-slate-800 font-mono focus:border-purple-500 outline-none">
+                        <input type="number" id="conc-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border border-teal-300 rounded-lg px-3 text-slate-800 font-mono focus:border-teal-500 outline-none">
                         <span class="flex items-center text-sm text-slate-500" id="conc-unit">mol/L</span>
-                        <button onclick="checkConc()" class="bg-purple-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
+                        <button onclick="checkConc()" class="bg-teal-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
                     </div>
                     <div id="conc-feedback" class="mt-2 hidden p-2 rounded-lg text-sm"></div>
-                    <button onclick="nextConc()" id="conc-next" class="w-full mt-2 bg-purple-200 text-purple-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
+                    <button onclick="nextConc()" id="conc-next" class="w-full mt-2 bg-teal-200 text-teal-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
                 </div>
             </section>
         </div>
@@ -174,6 +265,7 @@
         <!-- ==================== LEVEL 2: WAAGE ==================== -->
         <div id="content-lvl2" class="tab-content space-y-6">
 
+            <!-- 1. Balance Expert Mode -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="bg-blue-600 p-3 border-b border-blue-700 text-white flex justify-between items-center">
                     <h2 class="font-bold flex items-center gap-2"><span>⚖️</span> Waage: Expert Mode</h2>
@@ -213,11 +305,11 @@
                 </div>
             </section>
 
-            <!-- CSI -->
+            <!-- 2. CSI -->
             <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="bg-slate-800 p-3 relative overflow-hidden flex justify-between items-center">
                     <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-400 rounded-full opacity-10 blur-xl -mr-6 -mt-6"></div>
-                    <h2 class="font-bold text-yellow-400 flex items-center gap-2 relative z-10"><span>🕵️‍♀️</span> CSI: No Help</h2>
+                    <h2 class="font-bold text-yellow-400 flex items-center gap-2 relative z-10"><span>🕵️‍♀️</span> CSI: Stoff-Ermittlung</h2>
                     <span class="text-xs bg-white/10 text-yellow-400 px-2 py-1 rounded font-mono relative z-10" id="csi-score">Fälle: 0</span>
                 </div>
                 
@@ -236,9 +328,84 @@
                     <button onclick="nextCase()" class="w-full mt-3 bg-slate-800 text-white py-2.5 rounded-lg font-bold shadow hidden tap-active" id="csi-next-btn">Nächster Fall ➜</button>
                 </div>
             </section>
+
+            <!-- 3. NEU: Labor-Rezept (Praxisbezug) -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-3 text-white flex justify-between items-center">
+                    <h2 class="font-bold flex items-center gap-2"><span>🧫</span> Labor-Rezept</h2>
+                    <span class="text-xs bg-white/20 px-2 py-1 rounded font-mono" id="recipe-score">Gelöst: 0</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-slate-600 mb-3 text-center">Berechne die nötige Stoffmenge oder Masse für das Experiment!</p>
+                    
+                    <div class="bg-green-50 border-2 border-green-200 p-4 rounded-xl mb-4 relative">
+                        <div class="absolute -top-3 left-3 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">EXPERIMENT</div>
+                        <div class="text-slate-700 mt-2" id="recipe-scenario">Lade Szenario...</div>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-3">
+                        <div class="text-xs text-slate-500 mb-2">📋 GEGEBEN:</div>
+                        <div class="font-mono text-slate-800" id="recipe-given"></div>
+                    </div>
+                    
+                    <div class="flex gap-2 mb-3">
+                        <input type="number" id="recipe-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border border-green-300 rounded-lg px-3 font-mono focus:border-green-500 outline-none">
+                        <span class="flex items-center text-sm text-slate-500 font-bold" id="recipe-unit">g</span>
+                        <button onclick="checkRecipe()" class="bg-green-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
+                    </div>
+                    
+                    <div id="recipe-feedback" class="hidden p-3 rounded-lg text-sm mb-3"></div>
+                    <button onclick="nextRecipe()" id="recipe-next" class="w-full bg-green-200 text-green-800 py-2 rounded-lg font-bold hidden tap-active">Nächstes Experiment ➜</button>
+                </div>
+            </section>
+
+            <!-- 4. NEU: Mystery Box (Rückwärts-Denken) -->
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-violet-600 to-purple-600 p-3 text-white flex justify-between items-center">
+                    <h2 class="font-bold flex items-center gap-2"><span>📦</span> Mystery Box</h2>
+                    <span class="text-xs bg-white/20 px-2 py-1 rounded font-mono" id="mystery-score">Gelöst: 0</span>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-slate-600 mb-3 text-center">Berechne M und finde heraus, welcher Stoff in der Box ist!</p>
+                    
+                    <div class="flex justify-center mb-4">
+                        <div class="relative">
+                            <div class="w-28 h-28 bg-gradient-to-br from-violet-100 to-purple-200 rounded-2xl border-4 border-violet-300 flex items-center justify-center shadow-lg transform rotate-3">
+                                <span class="text-5xl">❓</span>
+                            </div>
+                            <div class="absolute -bottom-2 -right-2 bg-violet-600 text-white text-xs font-bold px-2 py-1 rounded shadow">UNBEKANNT</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-violet-50 p-3 rounded-lg border border-violet-200 text-center">
+                            <div class="text-xs text-violet-500">MASSE</div>
+                            <div class="text-xl font-bold font-mono text-violet-800" id="mystery-m">?? g</div>
+                        </div>
+                        <div class="bg-violet-50 p-3 rounded-lg border border-violet-200 text-center">
+                            <div class="text-xs text-violet-500">STOFFMENGE</div>
+                            <div class="text-xl font-bold font-mono text-violet-800" id="mystery-n">?? mol</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-3">
+                        <div class="text-sm text-slate-600 mb-2">Berechne zuerst M = m / n:</div>
+                        <div class="flex gap-2">
+                            <input type="number" id="mystery-M-answer" inputmode="decimal" placeholder="M = ?" class="flex-grow h-10 bg-white border border-violet-300 rounded-lg px-3 font-mono focus:border-violet-500 outline-none">
+                            <span class="flex items-center text-sm text-slate-500">g/mol</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-sm text-slate-600 mb-2">Welcher Stoff ist es?</div>
+                    <div class="grid grid-cols-3 gap-2 mb-3" id="mystery-options"></div>
+                    
+                    <div id="mystery-feedback" class="hidden p-3 rounded-lg text-sm mb-3"></div>
+                    <button onclick="nextMystery()" id="mystery-next" class="w-full bg-violet-200 text-violet-800 py-2 rounded-lg font-bold hidden tap-active">Nächste Box ➜</button>
+                </div>
+            </section>
         </div>
 
-        <!-- ==================== LEVEL 3: STÖCHIOMETRIE (NEU) ==================== -->
+        <!-- ==================== LEVEL 3: STÖCHIOMETRIE ==================== -->
         <div id="content-lvl3" class="tab-content space-y-6">
             
             <!-- Reaktionsgleichungen ausgleichen -->
@@ -288,24 +455,9 @@
                     <button onclick="nextStoich()" id="stoich-next" class="w-full bg-orange-200 text-orange-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
                 </div>
             </section>
-
-            <!-- Molares Volumen -->
-            <section class="bg-white rounded-2xl shadow-sm p-4 border-l-4 border-cyan-500">
-                <h2 class="font-bold text-slate-800 mb-3 flex items-center gap-2"><span>💨</span> Molares Volumen (Vm = 22.4 L/mol)</h2>
-                <div class="bg-cyan-50 p-4 rounded-xl border border-cyan-200">
-                    <div id="vm-task" class="text-sm mb-4 text-slate-700">Lade Aufgabe...</div>
-                    <div class="flex gap-2">
-                        <input type="number" id="vm-answer" inputmode="decimal" placeholder="?" class="flex-grow h-10 bg-white border border-cyan-300 rounded-lg px-3 text-slate-800 font-mono focus:border-cyan-500 outline-none">
-                        <span class="flex items-center text-sm text-slate-500" id="vm-unit">L</span>
-                        <button onclick="checkVm()" class="bg-cyan-600 text-white font-bold px-4 rounded-lg tap-active">OK</button>
-                    </div>
-                    <div id="vm-feedback" class="mt-2 hidden p-2 rounded-lg text-sm"></div>
-                    <button onclick="nextVm()" id="vm-next" class="w-full mt-2 bg-cyan-200 text-cyan-800 py-2 rounded-lg font-bold hidden tap-active">Weiter ➜</button>
-                </div>
-            </section>
         </div>
 
-        <!-- ==================== PSE RECHNER (NEU) ==================== -->
+        <!-- ==================== PSE RECHNER ==================== -->
         <div id="content-pse" class="tab-content space-y-6">
             
             <section class="bg-white rounded-2xl shadow-sm p-4">
@@ -342,7 +494,7 @@
                     <span class="text-xs bg-white/20 px-2 py-1 rounded font-mono" id="pse-quiz-score">Richtig: 0</span>
                 </div>
                 <div class="p-4">
-                    <p class="text-sm text-slate-600 mb-3 text-center">Berechne die molare Masse der Verbindung <b>ohne Taschenrechner</b>!</p>
+                    <p class="text-sm text-slate-600 mb-3 text-center">Berechne die molare Masse der Verbindung!</p>
                     
                     <div class="bg-violet-50 border border-violet-200 p-4 rounded-lg mb-4 text-center">
                         <div class="text-3xl font-bold text-violet-800 font-mono" id="pse-quiz-formula">H₂O</div>
@@ -444,10 +596,12 @@
             stoichScore: 0,
             pseQuizScore: 0,
             concScore: 0,
-            vmScore: 0
+            triangleScore: 0,
+            sortScore: 0,
+            recipeScore: 0,
+            mysteryScore: 0
         };
 
-        // Load from localStorage
         function loadState() {
             const saved = localStorage.getItem('chemieMasterState');
             if (saved) {
@@ -474,6 +628,10 @@
             document.getElementById('stoich-score').textContent = `Gelöst: ${state.stoichScore}`;
             document.getElementById('pse-quiz-score').textContent = `Richtig: ${state.pseQuizScore}`;
             document.getElementById('l1-streak').textContent = `🔥 ${state.l1Streak}`;
+            document.getElementById('triangle-score').textContent = `Gelöst: ${state.triangleScore}`;
+            document.getElementById('sort-score').textContent = `Gelöst: ${state.sortScore}`;
+            document.getElementById('recipe-score').textContent = `Gelöst: ${state.recipeScore}`;
+            document.getElementById('mystery-score').textContent = `Gelöst: ${state.mysteryScore}`;
         }
 
         function showToast(msg) {
@@ -525,6 +683,8 @@
             
             nextCalcL1();
             nextConc();
+            nextTriangle();
+            nextSort();
         }
 
         function resetMatching() {
@@ -600,15 +760,16 @@
             document.getElementById('l1-disp-m').innerText = (v * M).toFixed(1);
             
             document.querySelectorAll('.quick-scale-btn').forEach(btn => {
-                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-blue-500');
+                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-yellow-500');
             });
-            event.target.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500');
+            event.target.classList.add('ring-2', 'ring-offset-2', 'ring-yellow-500');
         }
 
         function nextCalcL1() {
             document.getElementById('l1-calc-feedback').classList.add('hidden');
             document.getElementById('l1-btn-next').classList.add('hidden');
             document.getElementById('hint-container').classList.add('hidden');
+            document.getElementById('reveal-hint-btn').classList.remove('hidden');
             hintStep = 0;
             
             const inp = document.getElementById('l1-user-answ');
@@ -648,7 +809,6 @@
             document.getElementById('l1-unit').innerText = u;
             l1Curr = {cor: parseFloat(cor), txt};
             
-            // Reset hints
             document.querySelectorAll('.hint-step').forEach((el, i) => {
                 el.classList.remove('visible');
                 el.textContent = hintSteps[i] || '';
@@ -697,8 +857,223 @@
             document.getElementById('l1-user-answ').disabled = true;
         }
 
-        // Konzentration
+        // ==================== FORMEL-DREIECK ====================
+        let triangleCurr = {};
+        let triangleSelected = null;
+
+        function nextTriangle() {
+            document.getElementById('triangle-feedback').classList.add('hidden');
+            document.getElementById('triangle-next').classList.add('hidden');
+            document.getElementById('triangle-input-area').classList.add('hidden');
+            document.getElementById('triangle-answer').value = '';
+            document.getElementById('triangle-answer').disabled = false;
+            triangleSelected = null;
+            
+            // Reset button styles
+            ['tri-m', 'tri-n', 'tri-M'].forEach(id => {
+                document.getElementById(id).classList.remove('ring-4', 'ring-yellow-400', 'scale-110');
+            });
+            
+            const compound = COMPOUNDS[Math.floor(Math.random() * COMPOUNDS.length)];
+            const searchType = ['m', 'n', 'M'][Math.floor(Math.random() * 3)];
+            
+            let given, answer, unit;
+            
+            if(searchType === 'm') {
+                const n = [0.5, 1, 2, 3, 5][Math.floor(Math.random() * 5)];
+                given = `n = ${n} mol, M = ${compound.M} g/mol`;
+                answer = n * compound.M;
+                unit = 'g';
+            } else if(searchType === 'n') {
+                const n = [0.5, 1, 2, 5][Math.floor(Math.random() * 4)];
+                const m = n * compound.M;
+                given = `m = ${m} g, M = ${compound.M} g/mol`;
+                answer = n;
+                unit = 'mol';
+            } else {
+                const n = [1, 2, 5][Math.floor(Math.random() * 3)];
+                const m = n * compound.M;
+                given = `m = ${m} g, n = ${n} mol`;
+                answer = compound.M;
+                unit = 'g/mol';
+            }
+            
+            document.getElementById('triangle-question').innerHTML = `Stoff: <b>${compound.formula}</b> – Welche Größe ist gesucht?`;
+            document.getElementById('triangle-given').textContent = given;
+            
+            triangleCurr = {searchType, answer: parseFloat(answer.toFixed(2)), unit};
+        }
+
+        function selectTriangle(type) {
+            triangleSelected = type;
+            
+            // Highlight selected
+            ['tri-m', 'tri-n', 'tri-M'].forEach(id => {
+                document.getElementById(id).classList.remove('ring-4', 'ring-yellow-400', 'scale-110');
+            });
+            document.getElementById('tri-' + type).classList.add('ring-4', 'ring-yellow-400', 'scale-110');
+            
+            // Show input
+            document.getElementById('triangle-input-area').classList.remove('hidden');
+            document.getElementById('triangle-unit').textContent = type === 'm' ? 'g' : (type === 'n' ? 'mol' : 'g/mol');
+            document.getElementById('triangle-answer').focus();
+        }
+
+        function checkTriangle() {
+            if(!triangleSelected) {
+                showToast('Wähle zuerst eine Größe!');
+                return;
+            }
+            
+            const val = parseFloat(document.getElementById('triangle-answer').value.replace(',','.'));
+            if(isNaN(val)) return;
+            
+            const fb = document.getElementById('triangle-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            const correctSelection = triangleSelected === triangleCurr.searchType;
+            const correctValue = Math.abs(val - triangleCurr.answer) < 0.5;
+            
+            if(correctSelection && correctValue) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Perfekt! ${triangleCurr.searchType} = ${triangleCurr.answer} ${triangleCurr.unit}`;
+                state.triangleScore++;
+                addXP(15);
+                updateXPDisplay();
+                confetti({particleCount: 25, spread: 50});
+            } else if(!correctSelection) {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Falsche Größe gewählt! Gesucht war: <b>${triangleCurr.searchType}</b>`;
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Wert falsch. Lösung: ${triangleCurr.answer} ${triangleCurr.unit}`;
+            }
+            
+            document.getElementById('triangle-next').classList.remove('hidden');
+            document.getElementById('triangle-answer').disabled = true;
+        }
+
+        // ==================== MASSEN-RANGLISTE (SORTIEREN) ====================
+        let sortCurr = [];
+        let sortedItems = [];
+
+        function nextSort() {
+            document.getElementById('sort-feedback').classList.add('hidden');
+            document.getElementById('sort-next-btn').classList.add('hidden');
+            document.getElementById('sort-check-btn').classList.remove('hidden');
+            
+            const itemsContainer = document.getElementById('sort-items');
+            const dropzone = document.getElementById('sort-dropzone');
+            
+            itemsContainer.innerHTML = '';
+            dropzone.innerHTML = '<span class="text-slate-400 text-sm" id="sort-placeholder">Stoffe hierher ziehen...</span>';
+            sortedItems = [];
+            
+            // Generate 4 random items with different masses
+            const elements = ['Fe', 'Au', 'Cu', 'Al', 'Ag', 'Zn', 'Pb', 'Ca', 'Na', 'Mg'];
+            const selected = [];
+            while(selected.length < 4) {
+                const el = elements[Math.floor(Math.random() * elements.length)];
+                if(!selected.find(s => s.el === el)) {
+                    const n = [0.5, 1, 2, 3, 5][Math.floor(Math.random() * 5)];
+                    const m = n * ELEMENTS[el].M;
+                    selected.push({el, n, M: ELEMENTS[el].M, m});
+                }
+            }
+            
+            sortCurr = [...selected].sort((a, b) => a.m - b.m); // Correct order
+            
+            // Shuffle for display
+            const shuffled = [...selected].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'drag-item bg-white border-2 border-amber-300 rounded-lg p-2 text-center cursor-pointer tap-active';
+                div.innerHTML = `<div class="text-xs text-amber-600">${item.n} mol</div><div class="font-bold">${item.el}</div><div class="text-[10px] text-slate-400">M=${item.M}</div>`;
+                div.setAttribute('data-mass', item.m);
+                div.setAttribute('data-id', idx);
+                
+                // Touch/Click to move
+                div.onclick = function() { moveToDropzone(this); };
+                
+                itemsContainer.appendChild(div);
+            });
+        }
+
+        function moveToDropzone(item) {
+            const dropzone = document.getElementById('sort-dropzone');
+            const placeholder = document.getElementById('sort-placeholder');
+            if(placeholder) placeholder.remove();
+            
+            // Clone and add to dropzone
+            const clone = item.cloneNode(true);
+            clone.onclick = function() { moveBackToItems(this); };
+            dropzone.appendChild(clone);
+            
+            // Remove from items
+            item.remove();
+            
+            sortedItems.push(parseFloat(item.getAttribute('data-mass')));
+        }
+
+        function moveBackToItems(item) {
+            const itemsContainer = document.getElementById('sort-items');
+            const dropzone = document.getElementById('sort-dropzone');
+            
+            // Clone and add back to items
+            const clone = item.cloneNode(true);
+            clone.onclick = function() { moveToDropzone(this); };
+            itemsContainer.appendChild(clone);
+            
+            // Remove from dropzone
+            const mass = parseFloat(item.getAttribute('data-mass'));
+            sortedItems = sortedItems.filter(m => m !== mass);
+            item.remove();
+            
+            // Add placeholder if empty
+            if(dropzone.children.length === 0) {
+                dropzone.innerHTML = '<span class="text-slate-400 text-sm" id="sort-placeholder">Stoffe hierher ziehen...</span>';
+            }
+        }
+
+        function checkSort() {
+            if(sortedItems.length !== 4) {
+                showToast('Sortiere alle 4 Stoffe!');
+                return;
+            }
+            
+            const fb = document.getElementById('sort-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            const correctOrder = sortCurr.map(s => s.m);
+            const isCorrect = sortedItems.every((m, i) => Math.abs(m - correctOrder[i]) < 0.01);
+            
+            if(isCorrect) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Perfekt sortiert! Massen: ${correctOrder.map(m => m.toFixed(1) + 'g').join(' < ')}`;
+                state.sortScore++;
+                addXP(20);
+                updateXPDisplay();
+                confetti({particleCount: 30, spread: 60});
+                
+                // Highlight all green
+                document.querySelectorAll('#sort-dropzone .drag-item').forEach(el => {
+                    el.classList.remove('border-amber-300');
+                    el.classList.add('border-green-500', 'bg-green-50');
+                });
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                const correctStr = sortCurr.map(s => `${s.n} mol ${s.el} (${s.m.toFixed(1)}g)`).join(' → ');
+                fb.innerHTML = `❌ Falsche Reihenfolge!<br>Richtig: ${correctStr}`;
+            }
+            
+            document.getElementById('sort-check-btn').classList.add('hidden');
+            document.getElementById('sort-next-btn').classList.remove('hidden');
+        }
+
+        // ==================== KONZENTRATION ====================
         let concCurr = {};
+        
         function nextConc() {
             document.getElementById('conc-feedback').classList.add('hidden');
             document.getElementById('conc-next').classList.add('hidden');
@@ -709,21 +1084,18 @@
             let task, unit, answer;
             
             if(type === 0) {
-                // Berechne c
                 const n = [0.1, 0.2, 0.5, 1, 2][Math.floor(Math.random() * 5)];
                 const V = [0.1, 0.25, 0.5, 1, 2][Math.floor(Math.random() * 5)];
                 answer = n / V;
                 task = `<b>${n} mol</b> NaCl in <b>${V} L</b> Wasser. Berechne c.`;
                 unit = 'mol/L';
             } else if(type === 1) {
-                // Berechne n
                 const c = [0.1, 0.5, 1, 2][Math.floor(Math.random() * 4)];
                 const V = [0.1, 0.25, 0.5, 1][Math.floor(Math.random() * 4)];
                 answer = c * V;
                 task = `c = <b>${c} mol/L</b>, V = <b>${V} L</b>. Berechne n.`;
                 unit = 'mol';
             } else {
-                // Berechne V
                 const n = [0.1, 0.2, 0.5, 1][Math.floor(Math.random() * 4)];
                 const c = [0.1, 0.5, 1, 2][Math.floor(Math.random() * 4)];
                 answer = n / c;
@@ -764,6 +1136,8 @@
             document.getElementById('l2-slider').addEventListener('input', checkBalance);
             nextBalanceTask();
             initCSI();
+            nextRecipe();
+            nextMystery();
         }
 
         function nextBalanceTask() {
@@ -828,7 +1202,7 @@
             }
         }
 
-        // CSI
+        // ==================== CSI ====================
         let csiCurr = {};
         const csiSuspects = [
             {n:'Al', M:27}, {n:'Fe', M:56}, {n:'Au', M:197}, 
@@ -885,15 +1259,159 @@
             }
         }
 
+        // ==================== LABOR-REZEPT ====================
+        let recipeCurr = {};
+
+        const SCENARIOS = [
+            {text: "Für eine Fällungsreaktion brauchst du <b>Silbernitrat</b>.", sub: 'AgNO₃', M: 170},
+            {text: "Die Titration erfordert <b>Natriumhydroxid</b>-Lösung.", sub: 'NaOH', M: 40},
+            {text: "Für den Versuch wird <b>Kupfersulfat</b> benötigt.", sub: 'CuSO₄', M: 159.5},
+            {text: "Du stellst eine <b>Kochsalz</b>-Lösung her.", sub: 'NaCl', M: 58.5},
+            {text: "Für die Reaktion brauchst du <b>Schwefelsäure</b>.", sub: 'H₂SO₄', M: 98},
+            {text: "Du wiegst <b>Eisenpulver</b> für die Thermitreaktion ab.", sub: 'Fe', M: 56},
+            {text: "Für den Nachweis wird <b>Calciumchlorid</b> benötigt.", sub: 'CaCl₂', M: 111}
+        ];
+
+        function nextRecipe() {
+            document.getElementById('recipe-feedback').classList.add('hidden');
+            document.getElementById('recipe-next').classList.add('hidden');
+            document.getElementById('recipe-answer').value = '';
+            document.getElementById('recipe-answer').disabled = false;
+            
+            const scenario = SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)];
+            const type = Math.random() > 0.5 ? 'mass' : 'mol';
+            
+            let given, answer, unit, task;
+            
+            if(type === 'mass') {
+                // Given: n, find m
+                const n = [0.1, 0.2, 0.5, 1, 2][Math.floor(Math.random() * 5)];
+                given = `n = ${n} mol, M(${scenario.sub}) = ${scenario.M} g/mol`;
+                answer = n * scenario.M;
+                unit = 'g';
+                task = `Wie viel Gramm musst du abwiegen?`;
+            } else {
+                // Given: m, find n
+                const n = [0.1, 0.25, 0.5, 1, 2][Math.floor(Math.random() * 5)];
+                const m = n * scenario.M;
+                given = `m = ${m.toFixed(1)} g, M(${scenario.sub}) = ${scenario.M} g/mol`;
+                answer = n;
+                unit = 'mol';
+                task = `Wie viel mol sind das?`;
+            }
+            
+            document.getElementById('recipe-scenario').innerHTML = scenario.text + '<br><span class="text-sm text-slate-600">' + task + '</span>';
+            document.getElementById('recipe-given').innerHTML = given;
+            document.getElementById('recipe-unit').textContent = unit;
+            
+            recipeCurr = {answer: parseFloat(answer.toFixed(2))};
+        }
+
+        function checkRecipe() {
+            const val = parseFloat(document.getElementById('recipe-answer').value.replace(',','.'));
+            if(isNaN(val)) return;
+            
+            const fb = document.getElementById('recipe-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            if(Math.abs(val - recipeCurr.answer) < 0.1) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Richtig! Das Experiment kann starten!`;
+                state.recipeScore++;
+                addXP(20);
+                updateXPDisplay();
+                confetti({particleCount: 25, spread: 50, origin: {y: 0.7}});
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Falsch! Lösung: ${recipeCurr.answer}`;
+            }
+            
+            document.getElementById('recipe-next').classList.remove('hidden');
+            document.getElementById('recipe-answer').disabled = true;
+        }
+
+        // ==================== MYSTERY BOX ====================
+        let mysteryCurr = {};
+        const MYSTERY_ELEMENTS = [
+            {n:'Fe', M:56}, {n:'Au', M:197}, {n:'Cu', M:63.5},
+            {n:'Al', M:27}, {n:'Ag', M:108}, {n:'Zn', M:65}
+        ];
+
+        function nextMystery() {
+            document.getElementById('mystery-feedback').classList.add('hidden');
+            document.getElementById('mystery-next').classList.add('hidden');
+            document.getElementById('mystery-M-answer').value = '';
+            document.getElementById('mystery-M-answer').disabled = false;
+            
+            const correct = MYSTERY_ELEMENTS[Math.floor(Math.random() * MYSTERY_ELEMENTS.length)];
+            const n = [0.5, 1, 2, 5][Math.floor(Math.random() * 4)];
+            const m = n * correct.M;
+            
+            document.getElementById('mystery-m').textContent = m + ' g';
+            document.getElementById('mystery-n').textContent = n + ' mol';
+            
+            mysteryCurr = {M: correct.M, name: correct.n, m, n};
+            
+            // Generate options (correct + 2 wrong)
+            const optionsContainer = document.getElementById('mystery-options');
+            optionsContainer.innerHTML = '';
+            
+            let options = [correct];
+            while(options.length < 3) {
+                const opt = MYSTERY_ELEMENTS[Math.floor(Math.random() * MYSTERY_ELEMENTS.length)];
+                if(!options.find(o => o.n === opt.n)) {
+                    options.push(opt);
+                }
+            }
+            options.sort(() => Math.random() - 0.5);
+            
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'mystery-opt p-2 rounded-lg border-2 border-slate-200 bg-white hover:border-violet-400 text-center transition tap-active';
+                btn.innerHTML = `<div class="font-bold">${opt.n}</div><div class="text-xs text-slate-400">${opt.M} g/mol</div>`;
+                btn.onclick = function() { checkMysterySelection(this, opt); };
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkMysterySelection(btn, selected) {
+            const mVal = parseFloat(document.getElementById('mystery-M-answer').value.replace(',','.'));
+            
+            const fb = document.getElementById('mystery-feedback');
+            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
+            
+            const correctM = Math.abs(mVal - mysteryCurr.M) < 1;
+            const correctSelection = selected.n === mysteryCurr.name;
+            
+            if(correctM && correctSelection) {
+                fb.classList.add('bg-green-100', 'text-green-800');
+                fb.innerHTML = `✅ Perfekt gelöst! M = ${mysteryCurr.m}g ÷ ${mysteryCurr.n}mol = ${mysteryCurr.M} g/mol → ${mysteryCurr.name}`;
+                btn.classList.add('border-green-500', 'bg-green-50');
+                state.mysteryScore++;
+                addXP(30);
+                updateXPDisplay();
+                confetti({particleCount: 40, spread: 70});
+            } else if(!correctM) {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ M falsch berechnet! ${mysteryCurr.m} ÷ ${mysteryCurr.n} = ${mysteryCurr.M} g/mol`;
+            } else {
+                fb.classList.add('bg-red-100', 'text-red-800');
+                fb.innerHTML = `❌ Falscher Stoff! Es war ${mysteryCurr.name} (M = ${mysteryCurr.M} g/mol)`;
+                btn.classList.add('border-red-300', 'bg-red-50');
+            }
+            
+            document.getElementById('mystery-next').classList.remove('hidden');
+            document.getElementById('mystery-M-answer').disabled = true;
+            document.querySelectorAll('.mystery-opt').forEach(b => b.disabled = true);
+        }
+
         // ==================== LEVEL 3: STÖCHIOMETRIE ====================
         let currentEq = null;
         let stoichCurr = {};
-        let vmCurr = {};
 
         function initLevel3() {
             nextEquation();
             nextStoich();
-            nextVm();
         }
 
         function nextEquation() {
@@ -904,7 +1422,6 @@
             const display = document.getElementById('equation-display');
             display.innerHTML = '';
             
-            // Reactants
             currentEq.reactants.forEach((r, i) => {
                 if(i > 0) display.innerHTML += '<span class="text-slate-400 mx-1">+</span>';
                 display.innerHTML += `<input type="number" class="eq-input w-8 h-8 text-center border-2 border-slate-300 rounded bg-white text-slate-800 font-bold" min="1" max="9" value="1">`;
@@ -913,7 +1430,6 @@
             
             display.innerHTML += '<span class="mx-2 text-slate-400">→</span>';
             
-            // Products
             currentEq.products.forEach((p, i) => {
                 if(i > 0) display.innerHTML += '<span class="text-slate-400 mx-1">+</span>';
                 display.innerHTML += `<input type="number" class="eq-input w-8 h-8 text-center border-2 border-slate-300 rounded bg-white text-slate-800 font-bold" min="1" max="9" value="1">`;
@@ -928,7 +1444,6 @@
             const fb = document.getElementById('eq-feedback');
             fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
             
-            // Check if coefficients match (allow scaled versions)
             const correct = currentEq.coeffs;
             const ratio = userCoeffs[0] / correct[0];
             let isCorrect = true;
@@ -956,7 +1471,6 @@
             }
         }
 
-        // Stöchiometrische Berechnungen
         function nextStoich() {
             document.getElementById('stoich-feedback').classList.add('hidden');
             document.getElementById('stoich-next').classList.add('hidden');
@@ -1004,56 +1518,6 @@
             document.getElementById('stoich-answer').disabled = true;
         }
 
-        // Molares Volumen
-        function nextVm() {
-            document.getElementById('vm-feedback').classList.add('hidden');
-            document.getElementById('vm-next').classList.add('hidden');
-            document.getElementById('vm-answer').value = '';
-            document.getElementById('vm-answer').disabled = false;
-            
-            const type = Math.random() > 0.5;
-            let task, unit, answer;
-            
-            if(type) {
-                // n → V
-                const n = [0.5, 1, 2, 5][Math.floor(Math.random() * 4)];
-                answer = n * 22.4;
-                task = `Volumen von <b>${n} mol</b> Gas (bei STP)?`;
-                unit = 'L';
-            } else {
-                // V → n
-                const V = [11.2, 22.4, 44.8, 112][Math.floor(Math.random() * 4)];
-                answer = V / 22.4;
-                task = `Stoffmenge in <b>${V} L</b> Gas (bei STP)?`;
-                unit = 'mol';
-            }
-            
-            document.getElementById('vm-task').innerHTML = task;
-            document.getElementById('vm-unit').textContent = unit;
-            vmCurr = {answer: parseFloat(answer.toFixed(2))};
-        }
-
-        function checkVm() {
-            const val = parseFloat(document.getElementById('vm-answer').value.replace(',','.'));
-            if(isNaN(val)) return;
-            
-            const fb = document.getElementById('vm-feedback');
-            fb.classList.remove('hidden', 'bg-green-100', 'bg-red-100', 'text-green-800', 'text-red-800');
-            
-            if(Math.abs(val - vmCurr.answer) < 0.1) {
-                fb.classList.add('bg-green-100', 'text-green-800');
-                fb.innerHTML = `✅ Richtig!`;
-                state.vmScore++;
-                addXP(15);
-            } else {
-                fb.classList.add('bg-red-100', 'text-red-800');
-                fb.innerHTML = `❌ Lösung: ${vmCurr.answer}`;
-            }
-            
-            document.getElementById('vm-next').classList.remove('hidden');
-            document.getElementById('vm-answer').disabled = true;
-        }
-
         // ==================== PSE ====================
         let formulaElements = [];
         let pseQuizCurr = {};
@@ -1061,7 +1525,6 @@
         function initPSE() {
             const grid = document.getElementById('pse-grid');
             
-            // Simplified PSE layout (main group elements)
             const layout = [
                 ['H','','','','','','','','','','','','','','','','','He'],
                 ['Li','Be','','','','','','','','','','','B','C','N','O','F','Ne'],
@@ -1138,7 +1601,6 @@
             updateFormulaDisplay();
         }
 
-        // PSE Quiz
         function nextPseQuiz() {
             document.getElementById('pse-quiz-feedback').classList.add('hidden');
             document.getElementById('pse-quiz-next').classList.add('hidden');
@@ -1149,7 +1611,6 @@
             
             document.getElementById('pse-quiz-formula').textContent = compound.formula;
             
-            // Generate hint
             const hints = compound.elements.map(e => `${e.el}=${ELEMENTS[e.el].M}`).join(', ');
             document.getElementById('pse-quiz-hint').textContent = hints;
             
